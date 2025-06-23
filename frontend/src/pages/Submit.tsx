@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,21 +17,95 @@ const Submit = () => {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = Array.from(event.target.files || []);
+    console.log('Files uploaded:', uploadedFiles);
     setFiles(prev => [...prev, ...uploadedFiles]);
+    if (uploadedFiles.length > 0) {
+      toast({
+        title: "Files Uploaded",
+        description: `${uploadedFiles.length} file(s) uploaded successfully.`,
+      });
+    }
   };
 
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
+    toast({
+      title: "File Removed",
+      description: "File has been removed from your submission.",
+    });
+  };
+
+  const triggerFileUpload = () => {
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.click();
+    }
   };
 
   const generateTags = () => {
-    // Simulate AI-generated tags based on content
-    const possibleTags = [
-      "corruption", "education", "government", "healthcare", "police", 
-      "environment", "fraud", "abuse", "transparency", "accountability"
-    ];
-    const newTags = possibleTags.slice(0, Math.floor(Math.random() * 5) + 2);
-    setTags(newTags);
+    if (!description.trim()) {
+      toast({
+        title: "No Content to Analyze",
+        description: "Please add a description first before generating tags.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Analyze description content for relevant keywords
+    const text = description.toLowerCase();
+    const generatedTags: string[] = [];
+
+    // Define keyword mappings for tag generation
+    const tagMappings = {
+      corruption: ['corruption', 'bribe', 'kickback', 'embezzlement', 'fraud', 'misappropriation', 'illegal payment'],
+      education: ['school', 'student', 'teacher', 'university', 'education', 'learning', 'academic', 'classroom'],
+      healthcare: ['hospital', 'doctor', 'medical', 'health', 'patient', 'clinic', 'medicine', 'treatment'],
+      police: ['police', 'officer', 'law enforcement', 'arrest', 'harassment', 'brutality', 'checkpoint'],
+      environment: ['pollution', 'waste', 'dumping', 'water', 'air quality', 'toxic', 'environmental', 'contamination'],
+      government: ['government', 'official', 'ministry', 'county', 'public office', 'civil servant', 'administration'],
+      transport: ['matatu', 'road', 'transport', 'traffic', 'vehicle', 'driving', 'highway'],
+      infrastructure: ['construction', 'building', 'road work', 'infrastructure', 'public works', 'maintenance'],
+      accountability: ['accountability', 'transparency', 'oversight', 'public funds', 'taxpayer'],
+      abuse: ['abuse', 'harassment', 'mistreatment', 'discrimination', 'violence']
+    };
+
+    // Check for location-based tags
+    const locations = ['nairobi', 'mombasa', 'kisumu', 'nakuru', 'eldoret', 'thika', 'machakos', 'kibera', 'kawangware'];
+    locations.forEach(location => {
+      if (text.includes(location)) {
+        generatedTags.push(location);
+      }
+    });
+
+    // Generate tags based on content analysis
+    Object.entries(tagMappings).forEach(([tag, keywords]) => {
+      const hasKeyword = keywords.some(keyword => text.includes(keyword));
+      if (hasKeyword) {
+        generatedTags.push(tag);
+      }
+    });
+
+    // Add urgency-based tags
+    const urgencyKeywords = ['urgent', 'emergency', 'immediate', 'crisis', 'critical'];
+    const hasUrgency = urgencyKeywords.some(keyword => text.includes(keyword));
+    if (hasUrgency) {
+      generatedTags.push('urgent');
+    }
+
+    // Ensure we have at least some tags, add generic ones if needed
+    if (generatedTags.length === 0) {
+      generatedTags.push('general', 'public-interest');
+    }
+
+    // Remove duplicates and limit to 6 tags
+    const uniqueTags = [...new Set(generatedTags)].slice(0, 6);
+    setTags(uniqueTags);
+
+    toast({
+      title: "PulseTags Generated! 🏷️",
+      description: `Generated ${uniqueTags.length} relevant tags based on your content.`,
+    });
   };
 
   const handleSubmit = async () => {
@@ -142,7 +215,10 @@ const Submit = () => {
                   <CardTitle>Upload Evidence</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                  <div 
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
+                    onClick={triggerFileUpload}
+                  >
                     <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-lg mb-2">Drag and drop files here</p>
                     <p className="text-sm text-gray-500 mb-4">
@@ -153,14 +229,19 @@ const Submit = () => {
                       multiple
                       accept="image/*,video/*,.pdf,.doc,.docx,.txt"
                       onChange={handleFileUpload}
-                      className="hidden"
+                      style={{ display: "none" }}
                       id="file-upload"
                     />
-                    <label htmlFor="file-upload">
-                      <Button variant="outline" className="cursor-pointer">
-                        Choose Files
-                      </Button>
-                    </label>
+                    <Button 
+                      variant="outline" 
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerFileUpload();
+                      }}
+                    >
+                      Choose Files
+                    </Button>
                   </div>
 
                   {/* File List */}
