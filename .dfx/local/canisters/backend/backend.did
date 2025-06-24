@@ -1,34 +1,32 @@
-type ToolCallArgument = 
+type Tag = text;
+type File = 
  record {
-   name: text;
-   value: text;
- };
-type ToolCall = 
- record {
-   function: FunctionCall;
-   id: text;
- };
-type FunctionCall = 
- record {
-   arguments: vec ToolCallArgument;
+   contentType: text;
+   data: blob;
    name: text;
  };
-type ChatMessage = 
- variant {
-   assistant: AssistantMessage;
-   system: record {content: text;};
-   tool: record {
-           content: text;
-           tool_call_id: text;
-         };
-   user: record {content: text;};
- };
-type AssistantMessage = 
+type BlowId = nat;
+type Blow = 
  record {
-   content: opt text;
-   tool_calls: vec ToolCall;
+   description: text;
+   downvotes: nat;
+   files: vec File;
+   flagged: bool;
+   id: BlowId;
+   tags: vec Tag;
+   timestamp: nat64;
+   trustScore: opt nat;
+   upvotes: nat;
+   visibility: nat;
  };
 service : {
-  chat: (messages: vec ChatMessage) -> (text);
-  prompt: (prompt: text) -> (text);
+  downvote_blow: (id: BlowId) -> (bool);
+  generate_tags_llm: (description: text) -> (vec text);
+  get_blow: (id: BlowId) -> (opt Blow) query;
+  get_blows: () -> (vec Blow) query;
+  set_trust_score: (id: BlowId, score: nat) -> (bool);
+  submit_blow: (description: text, files: vec File, tags: vec Tag) ->
+   (BlowId);
+  trust_score_llm: (description: text, tags: vec text) -> (nat);
+  upvote_blow: (id: BlowId) -> (bool);
 }

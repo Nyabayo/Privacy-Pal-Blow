@@ -1,4 +1,21 @@
 // Version: 1.0.0
+type BlowId__392333105 = Nat;
+type Blow__378593618 =
+  {
+    description : Text;
+    downvotes : Nat;
+    files : [File__656256037];
+    flagged : Bool;
+    id : BlowId__392333105;
+    tags : [Tag__232178393];
+    timestamp : Nat64;
+    trustScore : ?Nat;
+    upvotes : Nat;
+    visibility : Nat
+  };
+type File__656256037 = {contentType : Text; data : Blob; name : Text};
+type Tag__232178393 = Text;
 actor {
-  
+  stable var blows : [Blow__378593618];
+  stable var nextId : Nat
 };

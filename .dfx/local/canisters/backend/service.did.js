@@ -1,26 +1,36 @@
 export const idlFactory = ({ IDL }) => {
-  const ToolCallArgument = IDL.Record({
-    'value' : IDL.Text,
+  const BlowId = IDL.Nat;
+  const File = IDL.Record({
+    'contentType' : IDL.Text,
+    'data' : IDL.Vec(IDL.Nat8),
     'name' : IDL.Text,
   });
-  const FunctionCall = IDL.Record({
-    'name' : IDL.Text,
-    'arguments' : IDL.Vec(ToolCallArgument),
-  });
-  const ToolCall = IDL.Record({ 'id' : IDL.Text, 'function' : FunctionCall });
-  const AssistantMessage = IDL.Record({
-    'content' : IDL.Opt(IDL.Text),
-    'tool_calls' : IDL.Vec(ToolCall),
-  });
-  const ChatMessage = IDL.Variant({
-    'tool' : IDL.Record({ 'content' : IDL.Text, 'tool_call_id' : IDL.Text }),
-    'user' : IDL.Record({ 'content' : IDL.Text }),
-    'assistant' : AssistantMessage,
-    'system' : IDL.Record({ 'content' : IDL.Text }),
+  const Tag = IDL.Text;
+  const Blow = IDL.Record({
+    'id' : BlowId,
+    'files' : IDL.Vec(File),
+    'upvotes' : IDL.Nat,
+    'tags' : IDL.Vec(Tag),
+    'trustScore' : IDL.Opt(IDL.Nat),
+    'description' : IDL.Text,
+    'timestamp' : IDL.Nat64,
+    'downvotes' : IDL.Nat,
+    'visibility' : IDL.Nat,
+    'flagged' : IDL.Bool,
   });
   return IDL.Service({
-    'chat' : IDL.Func([IDL.Vec(ChatMessage)], [IDL.Text], []),
-    'prompt' : IDL.Func([IDL.Text], [IDL.Text], []),
+    'downvote_blow' : IDL.Func([BlowId], [IDL.Bool], []),
+    'generate_tags_llm' : IDL.Func([IDL.Text], [IDL.Vec(IDL.Text)], []),
+    'get_blow' : IDL.Func([BlowId], [IDL.Opt(Blow)], ['query']),
+    'get_blows' : IDL.Func([], [IDL.Vec(Blow)], ['query']),
+    'set_trust_score' : IDL.Func([BlowId, IDL.Nat], [IDL.Bool], []),
+    'submit_blow' : IDL.Func(
+        [IDL.Text, IDL.Vec(File), IDL.Vec(Tag)],
+        [BlowId],
+        [],
+      ),
+    'trust_score_llm' : IDL.Func([IDL.Text, IDL.Vec(IDL.Text)], [IDL.Nat], []),
+    'upvote_blow' : IDL.Func([BlowId], [IDL.Bool], []),
   });
 };
 export const init = ({ IDL }) => { return []; };

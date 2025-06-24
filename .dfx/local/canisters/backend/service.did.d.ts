@@ -2,25 +2,34 @@ import type { Principal } from '@dfinity/principal';
 import type { ActorMethod } from '@dfinity/agent';
 import type { IDL } from '@dfinity/candid';
 
-export interface AssistantMessage {
-  'content' : [] | [string],
-  'tool_calls' : Array<ToolCall>,
+export interface Blow {
+  'id' : BlowId,
+  'files' : Array<File>,
+  'upvotes' : bigint,
+  'tags' : Array<Tag>,
+  'trustScore' : [] | [bigint],
+  'description' : string,
+  'timestamp' : bigint,
+  'downvotes' : bigint,
+  'visibility' : bigint,
+  'flagged' : boolean,
 }
-export type ChatMessage = {
-    'tool' : { 'content' : string, 'tool_call_id' : string }
-  } |
-  { 'user' : { 'content' : string } } |
-  { 'assistant' : AssistantMessage } |
-  { 'system' : { 'content' : string } };
-export interface FunctionCall {
+export type BlowId = bigint;
+export interface File {
+  'contentType' : string,
+  'data' : Uint8Array | number[],
   'name' : string,
-  'arguments' : Array<ToolCallArgument>,
 }
-export interface ToolCall { 'id' : string, 'function' : FunctionCall }
-export interface ToolCallArgument { 'value' : string, 'name' : string }
+export type Tag = string;
 export interface _SERVICE {
-  'chat' : ActorMethod<[Array<ChatMessage>], string>,
-  'prompt' : ActorMethod<[string], string>,
+  'downvote_blow' : ActorMethod<[BlowId], boolean>,
+  'generate_tags_llm' : ActorMethod<[string], Array<string>>,
+  'get_blow' : ActorMethod<[BlowId], [] | [Blow]>,
+  'get_blows' : ActorMethod<[], Array<Blow>>,
+  'set_trust_score' : ActorMethod<[BlowId, bigint], boolean>,
+  'submit_blow' : ActorMethod<[string, Array<File>, Array<Tag>], BlowId>,
+  'trust_score_llm' : ActorMethod<[string, Array<string>], bigint>,
+  'upvote_blow' : ActorMethod<[BlowId], boolean>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

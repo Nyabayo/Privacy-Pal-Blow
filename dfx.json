@@ -24,6 +24,18 @@
         }
       },
       "wasm": "https://github.com/dfinity/llm/releases/latest/download/llm-canister-ollama.wasm"
+    },
+    "blow_storage": {
+      "main": "backend/app.mo",
+      "type": "motoko",
+      "dependencies": ["llm"],
+      "args": "--enhanced-orthogonal-persistence"
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
     }
   },
   "output_env_file": ".env",
