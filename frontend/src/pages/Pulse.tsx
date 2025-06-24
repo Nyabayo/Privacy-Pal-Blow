@@ -1,13 +1,15 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { TrendingUp, Flag, ArrowUp, Search, Filter, Eye, AlertTriangle } from "lucide-react";
+import { TrendingUp, Flag, ArrowUp, Search, Filter, Eye, AlertTriangle, ThumbsUp, ThumbsDown } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import { blowStorage } from "@/lib/actors";
+import { Actor, HttpAgent } from "@dfinity/agent";
+import { idlFactory as backendIdl, canisterId as backendCanisterId } from "declarations/backend";
 
 interface Blow {
   id: string;
@@ -21,6 +23,23 @@ interface Blow {
   urgency: "low" | "medium" | "high";
   verified: boolean;
   timeAgo: string;
+}
+
+interface BlowStorageBlow {
+  id: bigint;
+  description: string;
+  files: Array<{
+    contentType: string;
+    data: Uint8Array;
+    name: string;
+  }>;
+  tags: string[];
+  timestamp: bigint;
+  trustScore?: bigint;
+  upvotes: bigint;
+  downvotes: bigint;
+  visibility: bigint;
+  flagged: boolean;
 }
 
 const mockBlows: Blow[] = [
@@ -78,11 +97,67 @@ const mockBlows: Blow[] = [
   }
 ];
 
+const host = process.env.DFX_NETWORK === "ic"
+  ? "https://icp-api.io"
+  : "http://localhost:8000";
+
+const agent = new HttpAgent({ host });
+
+if (process.env.DFX_NETWORK !== "ic") {
+  agent.fetchRootKey().catch(err => {
+    console.warn("Unable to fetch root key. Check to ensure that your local replica is running");
+    console.error(err);
+  });
+}
+
+export const blowStorageActor = Actor.createActor(backendIdl, {
+  agent,
+  canisterId: backendCanisterId,
+});
+
 const Pulse = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [filterBy, setFilterBy] = useState("all");
   const [selectedBlow, setSelectedBlow] = useState<Blow | null>(null);
+  const [blows, setBlows] = useState<BlowStorageBlow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBlows = async () => {
+      try {
+        const result = await blowStorage.get_blows();
+        setBlows(result as BlowStorageBlow[]);
+      } catch (e) {
+        console.error("Error fetching blows:", e);
+        setBlows([]);
+      }
+      setLoading(false);
+    };
+    fetchBlows();
+  }, []);
+
+  const handleUpvote = async (blowId: bigint) => {
+    try {
+      await blowStorage.upvote_blow(blowId);
+      // Refresh the blows list
+      const result = await blowStorage.get_blows();
+      setBlows(result as BlowStorageBlow[]);
+    } catch (e) {
+      console.error("Error upvoting:", e);
+    }
+  };
+
+  const handleDownvote = async (blowId: bigint) => {
+    try {
+      await blowStorage.downvote_blow(blowId);
+      // Refresh the blows list
+      const result = await blowStorage.get_blows();
+      setBlows(result as BlowStorageBlow[]);
+    } catch (e) {
+      console.error("Error downvoting:", e);
+    }
+  };
 
   const filteredBlows = mockBlows.filter(blow => {
     const matchesSearch = blow.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -137,7 +212,7 @@ const Pulse = () => {
               The Pulse
             </h1>
             <p className="text-lg text-gray-600">
-              Real-time feed of verified whistleblowing reports from across Kenya
+              Real-time feed of anonymous whistleblowing reports
             </p>
           </div>
 
@@ -183,89 +258,74 @@ const Pulse = () => {
           </div>
 
           {/* Blows Grid */}
-          <div className="grid lg:grid-cols-2 gap-6">
-            {sortedBlows.map((blow) => (
-              <Card 
-                key={blow.id} 
-                className="hover:shadow-lg transition-all duration-300 cursor-pointer border-l-4 border-l-orange-500"
-                onClick={() => setSelectedBlow(blow)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {blow.title}
-                      </h3>
-                      <div className="flex items-center gap-2 mb-3">
-                        <Badge className={getCategoryColor(blow.category)}>
-                          {blow.category}
-                        </Badge>
-                        <Badge className={getUrgencyColor(blow.urgency)}>
-                          {blow.urgency} priority
-                        </Badge>
-                        {blow.verified && (
-                          <Badge className="bg-green-100 text-green-800">
-                            ✓ Verified
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold text-blue-600 mb-1">
-                        Trust: {blow.trustScore}%
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {blow.timeAgo}
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="pt-0">
-                  <p className="text-gray-600 mb-4 line-clamp-3">
-                    {blow.preview}
-                  </p>
-                  
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {blow.tags.map((tag, index) => (
-                      <span 
-                        key={index}
-                        className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-                        <ArrowUp className="h-4 w-4 mr-1" />
-                        {blow.uplifts}
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                        <Flag className="h-4 w-4 mr-1" />
-                        {blow.flags}
-                      </Button>
-                    </div>
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
-                      <Eye className="h-4 w-4 mr-1" />
-                      View Details
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* No results */}
-          {sortedBlows.length === 0 && (
+          {loading ? (
+            <div className="text-center py-12">Loading...</div>
+          ) : blows.length === 0 ? (
             <div className="text-center py-12">
-              <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No blows found</h3>
-              <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+              <p className="text-gray-600 mb-4">No blows found.</p>
+              <p className="text-sm text-gray-500">Submit a blow to see it appear here!</p>
+            </div>
+          ) : (
+            <div className="grid lg:grid-cols-2 gap-6">
+              {blows.map((blow, idx) => (
+                <Card key={blow.id.toString() || idx} className={`mb-4 ${blow.flagged ? 'border-red-200 bg-red-50' : ''}`}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="flex-1">
+                        {blow.description.slice(0, 60)}...
+                      </CardTitle>
+                      {blow.flagged && (
+                        <AlertTriangle className="h-5 w-5 text-red-500" title="Flagged content" />
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-2">
+                      <strong>Tags:</strong>{" "}
+                      {blow.tags.map((tag: string, i: number) => (
+                        <Badge key={i} className="mr-1">#{tag}</Badge>
+                      ))}
+                    </div>
+                    <div className="mb-2">
+                      <strong>Files:</strong> {blow.files.length}
+                    </div>
+                    <div className="mb-2">
+                      <strong>Trust Score:</strong> {blow.trustScore ? Number(blow.trustScore) : "N/A"}
+                    </div>
+                    <div className="mb-2">
+                      <strong>Visibility:</strong> {blow.visibility ? Number(blow.visibility) : 0}%
+                    </div>
+                    <div className="mb-2">
+                      <strong>Timestamp:</strong>{" "}
+                      {new Date(Number(blow.timestamp) / 1_000_000).toLocaleString()}
+                    </div>
+                    
+                    {/* Voting Section */}
+                    <div className="flex items-center gap-4 mt-4 pt-4 border-t">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUpvote(blow.id)}
+                          className="flex items-center gap-1"
+                        >
+                          <ThumbsUp className="h-4 w-4" />
+                          {blow.upvotes ? Number(blow.upvotes) : 0}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownvote(blow.id)}
+                          className="flex items-center gap-1"
+                        >
+                          <ThumbsDown className="h-4 w-4" />
+                          {blow.downvotes ? Number(blow.downvotes) : 0}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
         </div>

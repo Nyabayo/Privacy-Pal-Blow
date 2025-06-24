@@ -1,7 +1,8 @@
 import { Actor, HttpAgent } from "@dfinity/agent";
-import { idlFactory as backendIdl, canisterId as backendCanisterId } from "declarations/backend";
+import { idlFactory as backendIdl, canisterId as backendCanisterId } from "../declarations/backend";
+import { idlFactory as blowStorageIdl, canisterId as blowStorageCanisterId } from "../declarations/blow_storage";
 
-const host = process.env.DFX_NETWORK === "ic" ? "https://icp-api.io" : "http://localhost:4943";
+const host = process.env.DFX_NETWORK === "ic" ? "https://icp-api.io" : "http://localhost:8000";
 const agent = new HttpAgent({ host });
 
 // For local development, fetch root key
@@ -15,4 +16,9 @@ if (process.env.DFX_NETWORK !== "ic") {
 export const backend = Actor.createActor(backendIdl, {
   agent,
   canisterId: backendCanisterId,
+});
+
+export const blowStorage = Actor.createActor(blowStorageIdl, {
+  agent,
+  canisterId: blowStorageCanisterId,
 }); 

@@ -7,6 +7,7 @@ import { Upload, File, Image, Video, Link2, Shield, Zap, Trash2 } from "lucide-r
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
+import { blowStorage } from "@/lib/actors";
 
 const Submit = () => {
   const [description, setDescription] = useState("");
@@ -119,19 +120,24 @@ const Submit = () => {
     }
 
     setIsSubmitting(true);
-    
-    // Simulate submission process
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    toast({
-      title: "Blow Submitted Successfully! 🚨",
-      description: "Your submission is now anonymous and encrypted. Session data has been cleared.",
-    });
-
-    // Reset form
-    setDescription("");
-    setFiles([]);
-    setTags([]);
+    try {
+      // For testing: submit only description and tags, no files
+      await blowStorage.submit_blow(description, [], tags);
+      toast({
+        title: "Blow Submitted Successfully! 🚨",
+        description: "Your submission is now anonymous and encrypted. Session data has been cleared.",
+      });
+      // Reset form
+      setDescription("");
+      setFiles([]);
+      setTags([]);
+    } catch (e) {
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your blow. Please try again.",
+        variant: "destructive"
+      });
+    }
     setIsSubmitting(false);
   };
 

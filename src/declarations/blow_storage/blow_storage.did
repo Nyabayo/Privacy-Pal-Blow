@@ -1,0 +1,32 @@
+type Tag = text;
+type File = 
+ record {
+   contentType: text;
+   data: blob;
+   name: text;
+ };
+type BlowId = nat;
+type Blow = 
+ record {
+   description: text;
+   files: vec File;
+   id: BlowId;
+   tags: vec Tag;
+   timestamp: nat64;
+   trustScore: opt nat;
+   upvotes: nat;
+   downvotes: nat;
+   visibility: nat;
+   flagged: bool;
+ };
+service : {
+  generate_tags_llm: (description: text) -> (vec text);
+  get_blow: (id: BlowId) -> (opt Blow) query;
+  get_blows: () -> (vec Blow) query;
+  set_trust_score: (id: BlowId, score: nat) -> (bool);
+  submit_blow: (description: text, files: vec File, tags: vec Tag) ->
+   (BlowId);
+  trust_score_llm: (description: text, tags: vec text) -> (nat);
+  upvote_blow: (id: BlowId) -> (bool);
+  downvote_blow: (id: BlowId) -> (bool);
+}
